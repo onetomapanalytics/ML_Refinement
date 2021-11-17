@@ -1,0 +1,64 @@
+List of variables and breakdown 
+
+Pre Op Factors				16
+Pre Op Labs				12
+Other Patient Factors			10
+
+Totals Vars used for modelling		38
+
+
+*******************************************************************************************
+*Total 16 Pre Op Factors
+
+Diabetes mellitus with oral agents or insulin
+Current smoker within one year
+Dyspnea
+History of severe COPD
+Ascites
+Congestive heart failure (CHF) in 30 days before surgery
+Hypertension requiring medication
+Acute renal failure
+Currently on dialysis
+Disseminated cancer
+Open wound/wound infection
+Steroid use for chronic condition
+>10% loss body weight in last 6 months
+Bleeding disorders
+Transfusion >=1 units PRBCs in 72 hours  before surgery
+Systemic sepsis
+
+*******************************************************************************************
+*Total 13 Pre Op Labs
+
+Pre Op Labs
+Pre-operative WBC
+Pre-operative hematocrit
+Pre-operative platelet count
+Pre-operative PTT
+International Normalized Ratio (INR) of PT values
+Pre-operative total bilirubin
+Pre-operative SGOT
+Pre-operative alkaline phosphatase
+Pre-operative serum sodium
+Pre-operative BUN
+Pre-operative serum creatinine
+Pre-operative serum albumin
+
+
+
+*******************************************************************************************
+*Total 10 Other Patient Factors
+
+Age Categories
+Transfer Status
+Patient Gender
+Patient Race
+Patient Ethnicity
+Emergency case
+Wound classification
+Functional health status Prior to Surgery
+BMI_Category
+Ventilator dependent
+
+
+

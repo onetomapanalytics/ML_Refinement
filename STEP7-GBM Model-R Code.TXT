@@ -1,0 +1,119 @@
+STEP 7 
+
+R Code for GBM
+		
+*************************************************************************************************
+
+##Reading Data
+```{r}
+options(max.print=999999999)
+options(warn=-1)
+library(caret)
+library(readstata13)
+
+data2<-read.dta13(file = "Y:/Haroon Janjua/Project_EmerSurg_Deaths_NISQIP/Data/PreOp_Modelling.dta")
+
+# looking at the dimensions of the dataset
+dim(data2)
+
+# looking at any missing values in our dataset
+sum(is.na(data2))
+
+# Converting all the variables of the dataset into categorical variables 
+data2[c(1:42)] <- lapply(data2[,c(1:42)] , factor)
+data2$CASEID <- as.numeric(data2$CASEID)
+
+# taking a look at the structure of the varaibles in the dataset
+str(data2[1:42])
+
+data2$SURVIVAL <- factor(data2$SURVIVAL,levels = c(0,1),
+labels <- c("NO", "YES"))
+
+#tabulating the outcome variable
+print(table(data2$SURVIVAL))
+
+print(prop.table(table(data2$SURVIVAL)))
+
+
+outcomeName <- 'SURVIVAL'
+
+# Splitting the dataset into Training and testing datasets to train and test the model performance
+# split data2 into a train and a test set; train, test, and model. The train and test split is 70/30
+set.seed(1234)
+splitIndex <- createDataPartition(data2[,outcomeName], p = .70, list = FALSE, times = 1)
+train_data <- data2[ splitIndex,]
+test_data  <- data2[-splitIndex,]
+
+
+nrow(train_data)
+# 8589 observations pertain to the training data set.
+
+nrow(test_data)
+# 3680 observations pertain to the testing/evaluation data set.
+
+```
+## Running a Gradiant Boosted  Classfication Model
+```{r}
+options(warn=-1)
+library(caret)
+library(ROCR)
+library(pROC)
+library(xgboost)
+library(gbm)
+library(dplyr)
+library(gtsummary)
+library(xlsx)
+library(rJava)
+library(ggplot2)
+
+set.seed(1234)
+
+gbm.Control <- trainControl(method='cv', number=10, returnResamp='none', summaryFunction = twoClassSummary, classProbs = TRUE)
+
+gbm <- train(SURVIVAL ~ Age_Cat + SEX + EMERGNCY + WNDCLAS + FNSTATUS2 + bmi_cat + VENTILATOR + DIABETES + DYSPNEA + HXCOPD + ASCITES + DIALYSIS + WNDINF + TRANSFUS + SYS_SEPSIS + LAB_WBC + LAB_HCT + LAB_PLATE + LAB_PTT + LAB_INR + LAB_ILI + LAB_SGOT + 
+LAB_ALKPH + LAB_SODM + LAB_CREAT + LAB_ALBUM, data = train_data, 
+
+                  method='gbm', 
+
+                  trControl=gbm.Control,  
+
+                  metric = "ROC",
+
+                  preProc = c("center", "scale"))
+
+#Looking at relative influence of each predictor to model
+
+summary(gbm)
+sum<- (summary(gbm)) ; sum 
+
+gbm 
+
+# Evaluating the model performance on the test data set
+pred.gbm <- predict(gbm, newdata = test_data)
+
+# Confusion matrix for the random forest model 
+cm.gbm<-confusionMatrix(table(pred.gbm, test_data$SURVIVAL)) ; cm.gbm
+cm <- data.frame(cbind(t(cm.gbm$overall),t(cm.gbm$byClass))) ; cm 
+
+cm.gbm
+
+cm 
+
+# List of variable importance
+vimp<-(varImp(gbm,scale=F)) ; vimp
+
+vimp2<-(vimp$importance) ; vimp2 
+
+library(pROC)
+gbm.Predict.2 <- predict(gbm,newdata = test_data , type="prob")
+
+gbm.ROC.2 <- roc(test_data$SURVIVAL,gbm.Predict.2[,"YES"], ci = T, auc = T) ;gbm.ROC.2
+
+ggroc(gbm.ROC.2, colour = 'steelblue', size = 2) +
+  ggtitle(paste0('ROC Curve ', '(AUC = ', round((gbm.ROC.2$auc),3), ')'))+
+geom_abline(intercept=1, slope = 1, color="red", linetype="dashed")
+
+ggroc(list("LOGISTIC REGRESSION MODEL" = roc.data, "GRADIENT BOOSTING MODEL" = gbm.ROC.2),legacy.axes = TRUE,aes=c("linetype", "color")) +labs(color='MODEL ROC CURVES')+labs(x = "1- SPECIFICITY", y = "SENSITIVITY") +geom_abline(intercept=0, slope = 1, color="steelblue", linetype="solid", size = 1)
+
+
+```

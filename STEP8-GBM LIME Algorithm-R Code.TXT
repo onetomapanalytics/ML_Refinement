@@ -1,0 +1,828 @@
+STEP 8 
+
+R Code for GBM and LIME Modeling 
+		
+*************************************************************************************************
+
+---
+##Reading Data
+```{r}
+options(max.print=999999999)
+options(warn=-1)
+library(caret)
+library(readstata13)
+
+data2<-read.dta13(file = "Y:/Haroon Janjua/Project_EmerSurg_Deaths_NISQIP/Data/PreOp_Modelling.dta")
+
+# looking at the dimensions of the dataset
+dim(data2)
+
+# looking at any missing values in our dataset
+sum(is.na(data2))
+
+# Converting all the variables of the dataset into categorical variables 
+data2[c(1:42)] <- lapply(data2[,c(1:42)] , factor)
+data2$CASEID <- as.numeric(data2$CASEID)
+
+# taking a look at the structure of the varaibles in the dataset
+str(data2[1:42])
+
+data2$SURVIVAL <- factor(data2$SURVIVAL,levels = c(0,1),
+labels <- c("NO", "YES"))
+
+#tabulating the outcome variable
+print(table(data2$SURVIVAL))
+
+print(prop.table(table(data2$SURVIVAL)))
+
+outcomeName <- 'SURVIVAL'
+
+vars<-c("LAB_INR","SYS_SEPSIS","VENTILATOR","LAB_PLATE","LAB_CREAT","SURVIVAL","Age_Cat","SEX","EMERGNCY","WNDCLAS","FNSTATUS2","bmi_cat","DIABETES","DYSPNEA","HXCOPD","ASCITES","DIALYSIS","WNDINF","TRANSFUS","LAB_WBC","LAB_HCT","LAB_PTT","LAB_ILI","LAB_SGOT","LAB_ALKPH","LAB_SODM","LAB_ALBUM")
+
+data3<- data2[vars]
+
+data3$LAB_INR <- factor(data3$LAB_INR,levels = c(0,1),
+labels <- c("Low", "High"))
+
+levels(data3$SYS_SEPSIS) <- c("None", "SIRS","Sepsis","Septic Shock")
+
+data3$LAB_PLATE <- factor(data3$LAB_PLATE,levels = c(0,1,2),
+labels <- c("Normal","Low", "High"))
+
+data3$LAB_CREAT <- factor(data3$LAB_CREAT,levels = c(0,1,2),
+labels <- c("Normal","Low", "High"))
+
+data3$LAB_WBC <- factor(data3$LAB_WBC,levels = c(0,1,2),
+labels <- c("Normal","Low", "High"))
+
+data3$LAB_HCT <- factor(data3$LAB_HCT,levels = c(0,1,2),
+labels <- c("Normal","Low", "High"))
+
+data3$LAB_PTT <- factor(data3$LAB_PTT,levels = c(0,1,2),
+labels <- c("Normal","Low", "High"))
+
+data3$LAB_ILI <- factor(data3$LAB_ILI,levels = c(0,1),
+labels <- c("Low", "High"))
+
+data3$LAB_SGOT <- factor(data3$LAB_SGOT,levels = c(0,1,2),
+labels <- c("Normal","Low", "High"))
+
+data3$LAB_ALKPH <- factor(data3$LAB_ALKPH,levels = c(0,1,2),
+labels <- c("Normal","Low", "High"))
+
+data3$LAB_SODM <- factor(data3$LAB_SODM,levels = c(0,1,2),
+labels <- c("Normal","Low", "High"))
+
+data3$LAB_ALBUM <- factor(data3$LAB_ALBUM,levels = c(0,1),
+labels <- c("Low", "High"))
+
+
+levels(data3$WNDCLAS) <- c("Clean", "Clean/Contaminated","Contaminated","Dirty/Infected")
+
+levels(data3$FNSTATUS2) <- c("Independent", "Partiallly Dependent","Totally Dependent")
+
+levels(data3$bmi_cat) <- c("Normal", "UnderWeight","OverWeight","Obese")
+
+levels(data3$DIABETES) <- c("No", "Non_Insulin","With_Insulin")
+
+levels(data3$DYSPNEA) <- c("No", "Moderate Exertion","At Rest")
+
+str(data3)
+
+# Splitting the dataset into Training and testing datasets to train and test the model performance
+# split data2 into a train and a test set; train, test, and model. The train and test split is 70/30
+set.seed(6891)
+splitIndex <- createDataPartition(data3[,outcomeName], p = .70, list = FALSE, times = 1)
+train_data <- data3[ splitIndex,]
+test_data  <- data3[-splitIndex,]
+
+nrow(train_data)
+# 8575 observations pertain to the training data set.
+
+nrow(test_data)
+# 3673 observations pertain to the testing/evaluation data set.
+
+#tabulating the outcome variable for overall, training and testing data
+
+print(table(data2$SURVIVAL))
+
+print(prop.table(table(data2$SURVIVAL)))
+
+print(prop.table(table(train_data$SURVIVAL)))
+
+print(prop.table(table(test_data$SURVIVAL)))
+
+
+```
+## Running LIME
+```{r}
+options(warn=-1)
+library(caret)
+library(ROCR)
+library(pROC)
+library(xgboost)
+library(gbm)
+library(dplyr)
+library(gtsummary)
+library(xlsx)
+library(rJava)
+library(ggplot2)
+library(lime)
+library(data.table)
+
+set.seed(1234)
+gbm.Control <- trainControl(method='cv', number=10, returnResamp='none', summaryFunction = twoClassSummary, classProbs = TRUE)
+
+gbm <- train(SURVIVAL ~ Age_Cat + SEX + EMERGNCY + WNDCLAS + FNSTATUS2 + bmi_cat + VENTILATOR + DIABETES + DYSPNEA + HXCOPD + ASCITES + DIALYSIS + WNDINF + TRANSFUS + SYS_SEPSIS + LAB_WBC + LAB_HCT + LAB_PLATE + LAB_PTT + LAB_INR + LAB_ILI + LAB_SGOT + 
+LAB_ALKPH + LAB_SODM + LAB_CREAT + LAB_ALBUM, data = train_data, 
+
+                  method='gbm', 
+
+                  trControl=gbm.Control,  
+
+                  metric = "ROC",
+
+                  preProc = c("center", "scale"))
+
+#Looking at relative influence of each predictor to model
+
+summary(gbm)
+sum<- (summary(gbm)) ; sum 
+
+gbm 
+
+
+# Create an explainer object
+seed <- .Random.seed
+explainer <- lime(train_data, gbm)
+
+# Explain new observation
+#explanation <- explain(test_data, explainer, n_labels = 1, n_features = 5)
+seed <- .Random.seed
+explanation <- explain(
+  x = test_data, 
+  explainer = explainer, 
+  n_permutations = 5000,
+  dist_fun = "gower",
+  kernel_width = 0.75,
+  n_features = 5, 
+  feature_select = "highest_weights",
+  labels = "YES"
+  )
+
+names(explanation)
+
+explanation2 <- data.table(explanation)
+
+openxlsx::write.xlsx(x = explanation2, file = "LIME_5var.xlsx")
+
+explanation3 <- subset(explanation2, label_prob <= 0.20)
+
+```
+#Explanation Feature Plots- Case with Survival Probability <= 0.20
+```{r}
+plot_features(explanation3[1:20, ],ncol = 2)
+
+plot_features(explanation3[21:25, ],ncol = 2)
+plot_features(explanation3[26:30, ],ncol = 2)
+plot_features(explanation3[31:35, ],ncol = 2)
+plot_features(explanation3[36:40, ],ncol = 2)
+
+plot_features(explanation3[21:40, ],ncol = 2)
+
+plot_features(explanation3[41:60, ],ncol = 2)
+
+plot_features(explanation3[61:80, ],ncol = 2)
+
+plot_features(explanation3[81:100, ],ncol = 2)
+
+plot_features(explanation3[101:120, ],ncol = 2)
+
+plot_features(explanation3[121:140, ],ncol = 2)
+
+plot_features(explanation3[141:160, ],ncol = 2)
+
+plot_features(explanation3[141:145, ],ncol = 2)
+plot_features(explanation3[146:150, ],ncol = 2)
+plot_features(explanation3[151:155, ],ncol = 2)
+plot_features(explanation3[156:160, ],ncol = 2)
+
+plot_features(explanation3[161:180, ],ncol = 2)
+
+plot_features(explanation3[181:200, ],ncol = 2)
+
+plot_features(explanation3[201:220, ],ncol = 2)
+
+plot_features(explanation3[221:240, ],ncol = 2)
+
+plot_features(explanation3[241:245, ],ncol = 2)
+
+
+```
+#Explanation Feature Plots- First 600 Cases
+```{r}
+plot_features(explanation[1:20, ],ncol = 2)
+
+plot_features(explanation[21:40, ],ncol = 2)
+
+plot_features(explanation[41:60, ],ncol = 2)
+
+plot_features(explanation[61:80, ],ncol = 2)
+
+plot_features(explanation[81:100, ],ncol = 2)
+
+plot_features(explanation[101:120, ],ncol = 2)
+
+plot_features(explanation[121:140, ],ncol = 2)
+
+plot_features(explanation[141:160, ],ncol = 2)
+
+plot_features(explanation[161:180, ],ncol = 2)
+
+plot_features(explanation[181:200, ],ncol = 2)
+
+plot_features(explanation[201:220, ],ncol = 2)
+
+plot_features(explanation[221:240, ],ncol = 2)
+
+plot_features(explanation[241:260, ],ncol = 2)
+
+plot_features(explanation[261:280, ],ncol = 2)
+
+plot_features(explanation[281:300, ],ncol = 2)
+
+plot_features(explanation[301:320, ],ncol = 2)
+
+plot_features(explanation[321:340, ],ncol = 2)
+
+plot_features(explanation[341:360, ],ncol = 2)
+
+plot_features(explanation[361:380, ],ncol = 2)
+
+plot_features(explanation[381:400, ],ncol = 2)
+
+plot_features(explanation[401:420, ],ncol = 2)
+
+plot_features(explanation[421:440, ],ncol = 2)
+
+plot_features(explanation[441:460, ],ncol = 2)
+
+plot_features(explanation[461:480, ],ncol = 2)
+
+plot_features(explanation[481:500, ],ncol = 2)
+
+plot_features(explanation[501:520, ],ncol = 2)
+
+plot_features(explanation[521:540, ],ncol = 2)
+
+plot_features(explanation[541:560, ],ncol = 2)
+
+plot_features(explanation[561:580, ],ncol = 2)
+
+plot_features(explanation[581:600, ],ncol = 2)
+
+plot_features(explanation[601:620, ],ncol = 2)
+
+plot_features(explanation[621:640, ],ncol = 2)
+
+plot_features(explanation[641:660, ],ncol = 2)
+
+plot_features(explanation[661:680, ],ncol = 2)
+
+plot_features(explanation[681:700, ],ncol = 2)
+
+plot_features(explanation[701:720, ],ncol = 2)
+
+plot_features(explanation[721:740, ],ncol = 2)
+
+plot_features(explanation[741:760, ],ncol = 2)
+
+plot_features(explanation[761:780, ],ncol = 2)
+
+plot_features(explanation[781:800, ],ncol = 2)
+
+plot_features(explanation[801:820, ],ncol = 2)
+
+plot_features(explanation[821:840, ],ncol = 2)
+
+plot_features(explanation[841:860, ],ncol = 2)
+
+plot_features(explanation[861:880, ],ncol = 2)
+
+plot_features(explanation[881:900, ],ncol = 2)
+
+plot_features(explanation[901:920, ],ncol = 2)
+
+plot_features(explanation[921:940, ],ncol = 2)
+
+plot_features(explanation[941:960, ],ncol = 2)
+
+plot_features(explanation[961:980, ],ncol = 2)
+
+plot_features(explanation[981:1000, ],ncol = 2)
+
+plot_features(explanation[1001:1020, ],ncol = 2)
+
+plot_features(explanation[1021:1040, ],ncol = 2)
+
+plot_features(explanation[1041:1060, ],ncol = 2)
+
+plot_features(explanation[1061:1080, ],ncol = 2)
+
+plot_features(explanation[1081:1100, ],ncol = 2)
+
+plot_features(explanation[1101:1120, ],ncol = 2)
+
+plot_features(explanation[1121:1140, ],ncol = 2)
+
+plot_features(explanation[1141:1160, ],ncol = 2)
+
+plot_features(explanation[1161:1180, ],ncol = 2)
+
+plot_features(explanation[1181:1200, ],ncol = 2)
+
+plot_features(explanation[1201:1220, ],ncol = 2)
+
+plot_features(explanation[1221:1240, ],ncol = 2)
+
+plot_features(explanation[1241:1260, ],ncol = 2)
+
+plot_features(explanation[1261:1280, ],ncol = 2)
+
+plot_features(explanation[1281:1300, ],ncol = 2)
+
+plot_features(explanation[1301:1320, ],ncol = 2)
+
+plot_features(explanation[1321:1340, ],ncol = 2)
+
+plot_features(explanation[1341:1360, ],ncol = 2)
+
+plot_features(explanation[1361:1380, ],ncol = 2)
+
+plot_features(explanation[1381:1400, ],ncol = 2)
+
+plot_features(explanation[1401:1420, ],ncol = 2)
+
+plot_features(explanation[1421:1440, ],ncol = 2)
+
+plot_features(explanation[1441:1460, ],ncol = 2)
+
+plot_features(explanation[1461:1480, ],ncol = 2)
+
+plot_features(explanation[1481:1500, ],ncol = 2)
+
+plot_features(explanation[1501:1520, ],ncol = 2)
+
+plot_features(explanation[1521:1540, ],ncol = 2)
+
+plot_features(explanation[1541:1560, ],ncol = 2)
+
+plot_features(explanation[1561:1580, ],ncol = 2)
+
+plot_features(explanation[1581:1600, ],ncol = 2)
+
+plot_features(explanation[1601:1620, ],ncol = 2)
+
+plot_features(explanation[1621:1640, ],ncol = 2)
+
+plot_features(explanation[1641:1660, ],ncol = 2)
+
+plot_features(explanation[1661:1680, ],ncol = 2)
+
+plot_features(explanation[1681:1700, ],ncol = 2)
+
+plot_features(explanation[1701:1720, ],ncol = 2)
+
+plot_features(explanation[1721:1740, ],ncol = 2)
+
+plot_features(explanation[1741:1760, ],ncol = 2)
+
+plot_features(explanation[1761:1780, ],ncol = 2)
+
+plot_features(explanation[1781:1800, ],ncol = 2)
+
+plot_features(explanation[1801:1820, ],ncol = 2)
+
+plot_features(explanation[1821:1840, ],ncol = 2)
+
+plot_features(explanation[1841:1860, ],ncol = 2)
+
+plot_features(explanation[1861:1880, ],ncol = 2)
+
+plot_features(explanation[1881:1900, ],ncol = 2)
+
+plot_features(explanation[1901:1920, ],ncol = 2)
+
+plot_features(explanation[1921:1940, ],ncol = 2)
+
+plot_features(explanation[1941:1960, ],ncol = 2)
+
+plot_features(explanation[1961:1980, ],ncol = 2)
+
+plot_features(explanation[1981:2000, ],ncol = 2)
+
+plot_features(explanation[2001:2020, ],ncol = 2)
+
+plot_features(explanation[2021:2040, ],ncol = 2)
+
+plot_features(explanation[2041:2060, ],ncol = 2)
+
+plot_features(explanation[2061:2080, ],ncol = 2)
+
+plot_features(explanation[2081:2100, ],ncol = 2)
+
+plot_features(explanation[2101:2120, ],ncol = 2)
+
+plot_features(explanation[2121:2140, ],ncol = 2)
+
+plot_features(explanation[2141:2160, ],ncol = 2)
+
+plot_features(explanation[2161:2180, ],ncol = 2)
+
+plot_features(explanation[2181:2200, ],ncol = 2)
+
+plot_features(explanation[2201:2220, ],ncol = 2)
+
+plot_features(explanation[2221:2240, ],ncol = 2)
+
+plot_features(explanation[2241:2260, ],ncol = 2)
+
+plot_features(explanation[2261:2280, ],ncol = 2)
+
+plot_features(explanation[2281:2300, ],ncol = 2)
+
+plot_features(explanation[2301:2320, ],ncol = 2)
+
+plot_features(explanation[2321:2340, ],ncol = 2)
+
+plot_features(explanation[2341:2360, ],ncol = 2)
+
+plot_features(explanation[2361:2380, ],ncol = 2)
+
+plot_features(explanation[2381:2400, ],ncol = 2)
+
+plot_features(explanation[2401:2420, ],ncol = 2)
+
+plot_features(explanation[2421:2440, ],ncol = 2)
+
+plot_features(explanation[2441:2460, ],ncol = 2)
+
+plot_features(explanation[2461:2480, ],ncol = 2)
+
+plot_features(explanation[2481:2500, ],ncol = 2)
+
+plot_features(explanation[2501:2520, ],ncol = 2)
+
+plot_features(explanation[2521:2540, ],ncol = 2)
+
+plot_features(explanation[2541:2560, ],ncol = 2)
+
+plot_features(explanation[2561:2580, ],ncol = 2)
+
+plot_features(explanation[2581:2600, ],ncol = 2)
+
+plot_features(explanation[2601:2620, ],ncol = 2)
+
+plot_features(explanation[2621:2640, ],ncol = 2)
+
+plot_features(explanation[2641:2660, ],ncol = 2)
+
+plot_features(explanation[2661:2680, ],ncol = 2)
+
+plot_features(explanation[2681:2700, ],ncol = 2)
+
+plot_features(explanation[2701:2720, ],ncol = 2)
+
+plot_features(explanation[2721:2740, ],ncol = 2)
+
+plot_features(explanation[2741:2760, ],ncol = 2)
+
+plot_features(explanation[2761:2780, ],ncol = 2)
+
+plot_features(explanation[2781:2800, ],ncol = 2)
+
+plot_features(explanation[2801:2820, ],ncol = 2)
+
+plot_features(explanation[2821:2840, ],ncol = 2)
+
+plot_features(explanation[2841:2860, ],ncol = 2)
+
+plot_features(explanation[2861:2880, ],ncol = 2)
+
+plot_features(explanation[2881:2900, ],ncol = 2)
+
+plot_features(explanation[2901:2920, ],ncol = 2)
+
+plot_features(explanation[2921:2940, ],ncol = 2)
+
+plot_features(explanation[2941:2960, ],ncol = 2)
+
+plot_features(explanation[2961:2980, ],ncol = 2)
+
+plot_features(explanation[2981:3000, ],ncol = 2)
+
+
+```
+#Explanation Plots- First 600 Cases
+```{r}
+plot_explanations(explanation[1:20, ],ncol = 2)
+
+plot_explanations(explanation[21:40, ],ncol = 2)
+
+plot_explanations(explanation[41:60, ],ncol = 2)
+
+plot_explanations(explanation[61:80, ],ncol = 2)
+
+plot_explanations(explanation[81:100, ],ncol = 2)
+
+plot_explanations(explanation[101:120, ],ncol = 2)
+
+plot_explanations(explanation[121:140, ],ncol = 2)
+
+plot_explanations(explanation[141:160, ],ncol = 2)
+
+plot_explanations(explanation[161:180, ],ncol = 2)
+
+plot_explanations(explanation[181:200, ],ncol = 2)
+
+plot_explanations(explanation[201:220, ],ncol = 2)
+
+plot_explanations(explanation[221:240, ],ncol = 2)
+
+plot_explanations(explanation[241:260, ],ncol = 2)
+
+plot_explanations(explanation[261:280, ],ncol = 2)
+
+plot_explanations(explanation[281:300, ],ncol = 2)
+
+plot_explanations(explanation[301:320, ],ncol = 2)
+
+plot_explanations(explanation[321:340, ],ncol = 2)
+
+plot_explanations(explanation[341:360, ],ncol = 2)
+
+plot_explanations(explanation[361:380, ],ncol = 2)
+
+plot_explanations(explanation[381:400, ],ncol = 2)
+
+plot_explanations(explanation[401:420, ],ncol = 2)
+
+plot_explanations(explanation[421:440, ],ncol = 2)
+
+plot_explanations(explanation[441:460, ],ncol = 2)
+
+plot_explanations(explanation[461:480, ],ncol = 2)
+
+plot_explanations(explanation[481:500, ],ncol = 2)
+
+plot_explanations(explanation[501:520, ],ncol = 2)
+
+plot_explanations(explanation[521:540, ],ncol = 2)
+
+plot_explanations(explanation[541:560, ],ncol = 2)
+
+plot_explanations(explanation[561:580, ],ncol = 2)
+
+plot_explanations(explanation[581:600, ],ncol = 2)
+
+plot_explanations(explanation[601:620, ],ncol = 2)
+
+plot_explanations(explanation[621:640, ],ncol = 2)
+
+plot_explanations(explanation[641:660, ],ncol = 2)
+
+plot_explanations(explanation[661:680, ],ncol = 2)
+
+plot_explanations(explanation[681:700, ],ncol = 2)
+
+plot_explanations(explanation[701:720, ],ncol = 2)
+
+plot_explanations(explanation[721:740, ],ncol = 2)
+
+plot_explanations(explanation[741:760, ],ncol = 2)
+
+plot_explanations(explanation[761:780, ],ncol = 2)
+
+plot_explanations(explanation[781:800, ],ncol = 2)
+
+plot_explanations(explanation[801:820, ],ncol = 2)
+
+plot_explanations(explanation[821:840, ],ncol = 2)
+
+plot_explanations(explanation[841:860, ],ncol = 2)
+
+plot_explanations(explanation[861:880, ],ncol = 2)
+
+plot_explanations(explanation[881:900, ],ncol = 2)
+
+plot_explanations(explanation[901:920, ],ncol = 2)
+
+plot_explanations(explanation[921:940, ],ncol = 2)
+
+plot_explanations(explanation[941:960, ],ncol = 2)
+
+plot_explanations(explanation[961:980, ],ncol = 2)
+
+plot_explanations(explanation[981:1000, ],ncol = 2)
+
+plot_explanations(explanation[1001:1020, ],ncol = 2)
+
+plot_explanations(explanation[1021:1040, ],ncol = 2)
+
+plot_explanations(explanation[1041:1060, ],ncol = 2)
+
+plot_explanations(explanation[1061:1080, ],ncol = 2)
+
+plot_explanations(explanation[1081:1100, ],ncol = 2)
+
+plot_explanations(explanation[1101:1120, ],ncol = 2)
+
+plot_explanations(explanation[1121:1140, ],ncol = 2)
+
+plot_explanations(explanation[1141:1160, ],ncol = 2)
+
+plot_explanations(explanation[1161:1180, ],ncol = 2)
+
+plot_explanations(explanation[1181:1200, ],ncol = 2)
+
+plot_explanations(explanation[1201:1220, ],ncol = 2)
+
+plot_explanations(explanation[1221:1240, ],ncol = 2)
+
+plot_explanations(explanation[1241:1260, ],ncol = 2)
+
+plot_explanations(explanation[1261:1280, ],ncol = 2)
+
+plot_explanations(explanation[1281:1300, ],ncol = 2)
+
+plot_explanations(explanation[1301:1320, ],ncol = 2)
+
+plot_explanations(explanation[1321:1340, ],ncol = 2)
+
+plot_explanations(explanation[1341:1360, ],ncol = 2)
+
+plot_explanations(explanation[1361:1380, ],ncol = 2)
+
+plot_explanations(explanation[1381:1400, ],ncol = 2)
+
+plot_explanations(explanation[1401:1420, ],ncol = 2)
+
+plot_explanations(explanation[1421:1440, ],ncol = 2)
+
+plot_explanations(explanation[1441:1460, ],ncol = 2)
+
+plot_explanations(explanation[1461:1480, ],ncol = 2)
+
+plot_explanations(explanation[1481:1500, ],ncol = 2)
+
+plot_explanations(explanation[1501:1520, ],ncol = 2)
+
+plot_explanations(explanation[1521:1540, ],ncol = 2)
+
+plot_explanations(explanation[1541:1560, ],ncol = 2)
+
+plot_explanations(explanation[1561:1580, ],ncol = 2)
+
+plot_explanations(explanation[1581:1600, ],ncol = 2)
+
+plot_explanations(explanation[1601:1620, ],ncol = 2)
+
+plot_explanations(explanation[1621:1640, ],ncol = 2)
+
+plot_explanations(explanation[1641:1660, ],ncol = 2)
+
+plot_explanations(explanation[1661:1680, ],ncol = 2)
+
+plot_explanations(explanation[1681:1700, ],ncol = 2)
+
+plot_explanations(explanation[1701:1720, ],ncol = 2)
+
+plot_explanations(explanation[1721:1740, ],ncol = 2)
+
+plot_explanations(explanation[1741:1760, ],ncol = 2)
+
+plot_explanations(explanation[1761:1780, ],ncol = 2)
+
+plot_explanations(explanation[1781:1800, ],ncol = 2)
+
+plot_explanations(explanation[1801:1820, ],ncol = 2)
+
+plot_explanations(explanation[1821:1840, ],ncol = 2)
+
+plot_explanations(explanation[1841:1860, ],ncol = 2)
+
+plot_explanations(explanation[1861:1880, ],ncol = 2)
+
+plot_explanations(explanation[1881:1900, ],ncol = 2)
+
+plot_explanations(explanation[1901:1920, ],ncol = 2)
+
+plot_explanations(explanation[1921:1940, ],ncol = 2)
+
+plot_explanations(explanation[1941:1960, ],ncol = 2)
+
+plot_explanations(explanation[1961:1980, ],ncol = 2)
+
+plot_explanations(explanation[1981:2000, ],ncol = 2)
+
+plot_explanations(explanation[2001:2020, ],ncol = 2)
+
+plot_explanations(explanation[2021:2040, ],ncol = 2)
+
+plot_explanations(explanation[2041:2060, ],ncol = 2)
+
+plot_explanations(explanation[2061:2080, ],ncol = 2)
+
+plot_explanations(explanation[2081:2100, ],ncol = 2)
+
+plot_explanations(explanation[2101:2120, ],ncol = 2)
+
+plot_explanations(explanation[2121:2140, ],ncol = 2)
+
+plot_explanations(explanation[2141:2160, ],ncol = 2)
+
+plot_explanations(explanation[2161:2180, ],ncol = 2)
+
+plot_explanations(explanation[2181:2200, ],ncol = 2)
+
+plot_explanations(explanation[2201:2220, ],ncol = 2)
+
+plot_explanations(explanation[2221:2240, ],ncol = 2)
+
+plot_explanations(explanation[2241:2260, ],ncol = 2)
+
+plot_explanations(explanation[2261:2280, ],ncol = 2)
+
+plot_explanations(explanation[2281:2300, ],ncol = 2)
+
+plot_explanations(explanation[2301:2320, ],ncol = 2)
+
+plot_explanations(explanation[2321:2340, ],ncol = 2)
+
+plot_explanations(explanation[2341:2360, ],ncol = 2)
+
+plot_explanations(explanation[2361:2380, ],ncol = 2)
+
+plot_explanations(explanation[2381:2400, ],ncol = 2)
+
+plot_explanations(explanation[2401:2420, ],ncol = 2)
+
+plot_explanations(explanation[2421:2440, ],ncol = 2)
+
+plot_explanations(explanation[2441:2460, ],ncol = 2)
+
+plot_explanations(explanation[2461:2480, ],ncol = 2)
+
+plot_explanations(explanation[2481:2500, ],ncol = 2)
+
+plot_explanations(explanation[2501:2520, ],ncol = 2)
+
+plot_explanations(explanation[2521:2540, ],ncol = 2)
+
+plot_explanations(explanation[2541:2560, ],ncol = 2)
+
+plot_explanations(explanation[2561:2580, ],ncol = 2)
+
+plot_explanations(explanation[2581:2600, ],ncol = 2)
+
+plot_explanations(explanation[2601:2620, ],ncol = 2)
+
+plot_explanations(explanation[2621:2640, ],ncol = 2)
+
+plot_explanations(explanation[2641:2660, ],ncol = 2)
+
+plot_explanations(explanation[2661:2680, ],ncol = 2)
+
+plot_explanations(explanation[2681:2700, ],ncol = 2)
+
+plot_explanations(explanation[2701:2720, ],ncol = 2)
+
+plot_explanations(explanation[2721:2740, ],ncol = 2)
+
+plot_explanations(explanation[2741:2760, ],ncol = 2)
+
+plot_explanations(explanation[2761:2780, ],ncol = 2)
+
+plot_explanations(explanation[2781:2800, ],ncol = 2)
+
+plot_explanations(explanation[2801:2820, ],ncol = 2)
+
+plot_explanations(explanation[2821:2840, ],ncol = 2)
+
+plot_explanations(explanation[2841:2860, ],ncol = 2)
+
+plot_explanations(explanation[2861:2880, ],ncol = 2)
+
+plot_explanations(explanation[2881:2900, ],ncol = 2)
+
+plot_explanations(explanation[2901:2920, ],ncol = 2)
+
+plot_explanations(explanation[2921:2940, ],ncol = 2)
+
+plot_explanations(explanation[2941:2960, ],ncol = 2)
+
+plot_explanations(explanation[2961:2980, ],ncol = 2)
+
+plot_explanations(explanation[2981:3000, ],ncol = 2)
+
+```

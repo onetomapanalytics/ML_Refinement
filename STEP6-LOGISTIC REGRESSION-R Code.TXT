@@ -1,0 +1,390 @@
+
+
+The code shown below was used to determine the top 5 factor combinations with respect to counts of death. 
+
+*Modelling Pre Op Factors & Lab Values Only
+
+clear
+use "\PreOp_Modelling"
+
+tab SURVIVAL
+
+*LAB_INR PRSEPIS VENTILAT LAB_PLATE LAB_WBC LAB_CREAT LAB_ALKPH
+
+order SURVIVAL LAB_INR SYS_SEPSIS VENTILATOR LAB_PLATE LAB_WBC , first 
+
+*These were the top 5 factors returned by LIME model  
+tab SURVIVAL LAB_INR 
+
+tab SURVIVAL SYS_SEPSIS 
+
+tab SURVIVAL VENTILATOR
+
+tab LAB_PLATE SURVIVAL 
+
+tab LAB_WBC SURVIVAL 
+
+tab SURVIVAL
+*****************************************************************
+
+gen LAB_INR2 = 1 if LAB_INR == 1
+gen SYS_SEPSIS2 = 1 if SYS_SEPSIS == "4-Septic Shock"
+gen VENTILATOR2 = 1 if VENTILATOR == "Yes"
+gen LAB_PLATE2 = 1 if LAB_PLATE == 1
+gen LAB_WBC2 = 1 if LAB_WBC == 1
+
+* ADDING THE TOTAL of each item from above 
+egen mDI = rowtotal(LAB_INR2 SYS_SEPSIS2 VENTILATOR2 LAB_PLATE2 LAB_WBC2)
+
+tab mDI if SURVIVAL == 0
+tab mDI if SURVIVAL == 1
+
+
+*****************************************************************
+*****************************************************************
+*Only 1 factors 
+
+count if LAB_INR2 == 1 & SYS_SEPSIS2 == . & VENTILATOR2 == . & LAB_PLATE2 == . & LAB_WBC2 == . & SURVIVAL == 0
+
+count if LAB_INR2 == . & SYS_SEPSIS2 == 1 & VENTILATOR2 == . & LAB_PLATE2 == . & LAB_WBC2 == . & SURVIVAL == 0
+
+count if LAB_INR2 == . & SYS_SEPSIS2 == . & VENTILATOR2 == 1 & LAB_PLATE2 == . & LAB_WBC2 == . & SURVIVAL == 0
+
+count if LAB_INR2 == . & SYS_SEPSIS2 == . & VENTILATOR2 == . & LAB_PLATE2 == 1 & LAB_WBC2 == . & SURVIVAL == 0
+
+count if LAB_INR2 == . & SYS_SEPSIS2 == . & VENTILATOR2 == . & LAB_PLATE2 == . & LAB_WBC2 == 1 & SURVIVAL == 0
+
+*one Factor for Confusion Matrix
+
+gen factor_1 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == . & VENTILATOR2 == . & LAB_PLATE2 == . & LAB_WBC2 == . & SURVIVAL == 0
+
+replace factor_1 = "YES" if LAB_INR2 == . & SYS_SEPSIS2 == 1 & VENTILATOR2 == . & LAB_PLATE2 == . & LAB_WBC2 == . & SURVIVAL == 0
+
+replace factor_1 = "YES" if LAB_INR2 == . & SYS_SEPSIS2 == . & VENTILATOR2 == 1 & LAB_PLATE2 == . & LAB_WBC2 == . & SURVIVAL == 0
+
+replace factor_1 = "YES" if LAB_INR2 == . & SYS_SEPSIS2 == . & VENTILATOR2 == . & LAB_PLATE2 == 1 & LAB_WBC2 == . & SURVIVAL == 0
+
+replace factor_1 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == . & VENTILATOR2 == . & LAB_PLATE2 == . & LAB_WBC2 == . & SURVIVAL == 1
+
+replace factor_1 = "YES" if LAB_INR2 == . & SYS_SEPSIS2 == 1 & VENTILATOR2 == . & LAB_PLATE2 == . & LAB_WBC2 == . & SURVIVAL == 1
+
+replace factor_1 = "YES" if LAB_INR2 == . & SYS_SEPSIS2 == . & VENTILATOR2 == 1 & LAB_PLATE2 == . & LAB_WBC2 == . & SURVIVAL == 1
+
+replace factor_1 = "YES" if LAB_INR2 == . & SYS_SEPSIS2 == . & VENTILATOR2 == . & LAB_PLATE2 == 1 & LAB_WBC2 == . & SURVIVAL == 1
+
+
+*replace factor_1 = "YES"  if LAB_INR2 == . & SYS_SEPSIS2 == . & VENTILATOR2 == . & LAB_PLATE2 == . & LAB_WBC2 == 1 & SURVIVAL == 0
+
+replace factor_1 = "NO" if factor_1 == ""
+
+tab factor_1
+
+tab factor_1 SURVIVAL
+
+
+*****************************************************************
+*Two factor combination 
+
+*(1,2) 
+count if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & SURVIVAL == 0 & mDI == 2
+
+*(1,3) 
+count if LAB_INR2 == 1 & VENTILATOR2 == 1 & SURVIVAL == 0 & mDI == 2
+
+*(1,4) 
+count if LAB_INR2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 0 & mDI == 2
+
+*(1,5) 
+count if LAB_INR2 == 1 & LAB_WBC2 == 1  & SURVIVAL == 0 & mDI == 2
+
+*(2,3) 
+count if SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & SURVIVAL == 0 & mDI == 2
+
+*(2,4) 
+count if SYS_SEPSIS2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 0 & mDI == 2
+
+*(2,5) 
+count if SYS_SEPSIS2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 2
+
+*(3,4) 
+count if VENTILATOR2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 0 & mDI == 2
+
+*(3,5) 
+count if VENTILATOR2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 2
+
+*(4,5) 
+count if LAB_PLATE2 ==  1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 2
+
+
+*****************************************************************
+*Two Factor for Confusion Matrix
+
+
+gen factor_2 = ""
+*(1,2) 
+replace  factor_2 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & SURVIVAL == 0 & mDI == 2
+
+*(1,3) 
+replace factor_2 = "YES" if LAB_INR2 == 1 & VENTILATOR2 == 1 & SURVIVAL == 0 & mDI == 2
+
+*(1,4) 
+replace factor_2 = "YES" if LAB_INR2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 0 & mDI == 2
+
+*(1,5) 
+replace factor_2 = "YES" if LAB_INR2 == 1 & LAB_WBC2 == 1  & SURVIVAL == 0 & mDI == 2
+
+
+
+*(2,3) 
+replace factor_2 = "YES" if SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & SURVIVAL == 0 & mDI == 2
+
+*(2,4) 
+replace factor_2 = "YES" if SYS_SEPSIS2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 0 & mDI == 2
+
+*(2,5) 
+replace factor_2 = "YES"  if SYS_SEPSIS2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 2
+
+*(3,4) 
+replace factor_2 = "YES" if VENTILATOR2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 0 & mDI == 2
+*(3,5) 
+replace factor_2 = "YES" if VENTILATOR2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 2
+*(4,5) 
+replace factor_2 = "YES" if LAB_PLATE2 ==  1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 2
+*(1,2) 
+replace factor_2 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & SURVIVAL == 1 & mDI == 2
+*(1,3) 
+replace factor_2 = "YES" if LAB_INR2 == 1 & VENTILATOR2 == 1 & SURVIVAL == 1 & mDI == 2
+*(1,4) 
+replace factor_2 = "YES" if LAB_INR2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 1 & mDI == 2
+
+replace factor_2 = "YES" if LAB_INR2 == 1 & LAB_WBC2 == 1  & SURVIVAL == 1 & mDI == 2
+*(2,3) 
+replace factor_2 = "YES" if SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & SURVIVAL == 1 & mDI == 2
+*(2,4) 
+replace factor_2 = "YES" if SYS_SEPSIS2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 1 & mDI == 2
+*(2,5) 
+replace factor_2 = "YES"  if SYS_SEPSIS2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 1 & mDI == 2
+*(3,4) 
+replace factor_2 = "YES" if VENTILATOR2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 1 & mDI == 2
+*(3,5) 
+replace factor_2 = "YES" if VENTILATOR2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 1 & mDI == 2
+*(4,5) 
+replace factor_2 = "YES" if LAB_PLATE2 ==  1 & LAB_WBC2 == 1 & SURVIVAL == 1 & mDI == 2
+
+
+replace factor_2 = "NO" if factor_2 == ""
+
+tab factor_2
+
+tab factor_2 SURVIVAL
+
+
+*****************************************************************
+*Three factor combination 
+
+*(1,2,3) 
+count if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & SURVIVAL == 0 & mDI == 3
+
+*(1,2,4) 
+count if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 0 & mDI == 3
+
+*(1,2,5) 
+count if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 3
+
+
+*(1,3,4) 
+count if LAB_INR2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 0 & mDI == 3
+
+*(1,3,5) 
+count if LAB_INR2 == 1 & VENTILATOR2 == 1 & LAB_WBC2 ==  1 & SURVIVAL == 0 & mDI == 3
+
+
+*(1,4,5) 
+count if LAB_INR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 ==  1 & SURVIVAL == 0 & mDI == 3
+
+
+*(2,3,4) 
+count if SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & SURVIVAL == 0 & mDI == 3
+
+*(2,3,5) 
+count if SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 3
+
+*(2,4,5) 
+count if SYS_SEPSIS2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 3
+
+*(3,4,5) 
+count if VENTILATOR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 3
+
+*****************************************************************
+*Three Factor for Confusion Matrix
+
+gen factor_3 = ""
+*(1,2,3) 
+replace factor_3 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & SURVIVAL == 0 & mDI == 3
+*(1,2,4) 
+replace factor_3 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 0 & mDI == 3
+*(1,3,4) 
+replace factor_3 = "YES" if LAB_INR2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 0 & mDI == 3
+*(2,3,4) 
+replace factor_3 = "YES" if SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & SURVIVAL == 0 & mDI == 3
+*(1,4,5) 
+replace factor_3 = "YES" if LAB_INR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 ==  1 & SURVIVAL == 0 & mDI == 3
+*(1,2,5) 
+replace factor_3 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 3
+*(1,3,5) 
+replace factor_3 = "YES" if LAB_INR2 == 1 & VENTILATOR2 == 1 & LAB_WBC2 ==  1 & SURVIVAL == 0 & mDI == 3
+
+
+*(2,3,5) 
+replace factor_3 = "YES" if SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 3
+*(2,4,5) 
+replace factor_3 = "YES" if SYS_SEPSIS2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 3
+*(3,4,5) 
+replace factor_3 = "YES" if VENTILATOR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 3
+
+
+***********************
+
+*(1,2,3) 
+replace factor_3 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & SURVIVAL == 1 & mDI == 3
+*(1,2,4) 
+replace factor_3 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 1 & mDI == 3
+*(1,3,4) 
+replace factor_3 = "YES" if LAB_INR2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 ==  1 & SURVIVAL == 1 & mDI == 3
+*(2,3,4) 
+replace factor_3 = "YES" if SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & SURVIVAL == 1 & mDI == 3
+*(1,4,5) 
+replace factor_3 = "YES" if LAB_INR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 ==  1 & SURVIVAL == 1 & mDI == 3
+*(1,2,5) 
+replace factor_3 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 1 & mDI == 3
+*(1,3,5) 
+replace factor_3 = "YES" if LAB_INR2 == 1 & VENTILATOR2 == 1 & LAB_WBC2 ==  1 & SURVIVAL == 1 & mDI == 3
+*(2,3,5) 
+replace factor_3 = "YES" if SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 1 & mDI == 3
+*(2,4,5) 
+replace factor_3 = "YES" if SYS_SEPSIS2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 1 & mDI == 3
+*(3,4,5) 
+replace factor_3 = "YES" if VENTILATOR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 1 & mDI == 3
+
+replace factor_3 = "NO" if factor_3 == ""
+
+tab factor_3
+
+tab factor_3 SURVIVAL
+
+*****************************************************************
+*****************************************************************
+*Four factor combination 
+
+*(1,2,3,4) 
+count if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & SURVIVAL == 0 & mDI == 4
+
+*(1,2,3,5) 
+count if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 4
+
+*(1,2,4,5) 
+count if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 4
+
+*(2,3,4,5) 
+count if SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 4
+
+*(1,3,4,5) 
+count if LAB_INR2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 4
+
+*****************************************************************
+*Four Factor for Confusion Matrix
+gen factor_4 = ""
+
+*(1,2,3,4) 
+replace factor_4 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & SURVIVAL == 0 & mDI == 4
+*(2,3,4,5) 
+replace factor_4 = "YES" if SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 4
+*(1,2,4,5) 
+replace factor_4 = "YES"  if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 4
+*(1,2,3,5) 
+replace factor_4 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 4
+*(1,3,4,5) 
+replace factor_4 = "YES" if LAB_INR2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 4
+
+
+
+*(1,2,3,4) 
+replace factor_4 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & SURVIVAL == 1 & mDI == 4
+*(2,3,4,5) 
+replace factor_4 = "YES" if SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 1 & mDI == 4
+*(1,2,4,5) 
+replace factor_4 = "YES"  if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 1 & mDI == 4
+*(1,2,3,5) 
+replace factor_4 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 1 & mDI == 4
+*(1,3,4,5) 
+replace factor_4 = "YES" if LAB_INR2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 1 & mDI == 4
+
+
+replace factor_4 = "NO" if factor_4 == ""
+
+tab factor_4
+
+tab factor_4 SURVIVAL
+
+*****************************************************************
+*Five factor combination 
+
+*(1,2,3,4,5) 
+count if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 5
+
+gen factor_5 = ""
+*Five Factor for Confusion Matrix
+replace factor_5 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 0 & mDI == 5
+
+replace factor_5 = "YES" if LAB_INR2 == 1 & SYS_SEPSIS2 == 1 & VENTILATOR2 == 1 & LAB_PLATE2 == 1 & LAB_WBC2 == 1 & SURVIVAL == 1 & mDI == 5
+
+replace factor_5 = "NO" if factor_5 == ""
+
+tab factor_5
+
+tab factor_5 SURVIVAL
+
+*****************************************************************
+tab factor_5 SURVIVAL
+
+tab factor_4 SURVIVAL
+
+tab factor_3 SURVIVAL
+
+tab factor_2 SURVIVAL
+
+
+tab factor_5 
+
+gen fac_5 = "YES" if factor_5 == "NO"
+replace fac_5 = "NO" if factor_5 == "YES"
+
+tab fac_5 
+tab fac_5 SURVIVAL
+
+
+gen fac_4 = "YES" if factor_4 == "NO"
+replace fac_4 = "NO" if factor_4 == "YES"
+
+tab fac_4 
+tab fac_4 SURVIVAL
+
+
+gen fac_3 = "YES" if factor_3 == "NO"
+replace fac_3 = "NO" if factor_3 == "YES"
+
+tab fac_3 
+tab fac_3 SURVIVAL
+
+
+gen fac_2 = "YES" if factor_2 == "NO"
+replace fac_2 = "NO" if factor_2 == "YES"
+
+tab fac_2 
+tab fac_2 SURVIVAL
+
+*****************************************************************
+order  SURVIVAL mDI factor_4 factor_5 factor_3 factor_2 fac_5 fac_4 fac_3 fac_2, first 
+
+
+save "\PreOp_Modelling_Factors", replace 

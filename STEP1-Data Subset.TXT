@@ -1,0 +1,43 @@
+
+STEP-1 Using the code below, the data was subset to keep patient with a predictied mortality probability of >=0.50.
+This step was repeated on the yearly files from 2012-2019, the outcome variable was also created in this step,
+
+*Project Emergency Surgeries NISQIP
+
+*File name and path 
+use "Z:\acs_nsqip_puf19.dta"
+
+*Taking a look at the number of admission where the mortality probability is >= 0.50 and keeping only admission that match this criteria 
+rename *, upper
+
+drop if MORTPROB  == . 
+
+count if MORTPROB >= 0.50 
+*1780
+
+keep if MORTPROB >= 0.50 
+*1780
+
+tab DISCHDEST
+
+*From the discharge status variable, dropping if the discharge status was hospice, unknown or NULL
+					   
+drop if DISCHDEST == "Hospice" | DISCHDEST == "Unknown" | DISCHDEST == "NULL" | DISCHDEST == "Against Medical Advice (AMA)" 
+
+tab DISCHDEST
+
+gen mortality = 1 if DISCHDEST == "Expired"
+
+replace mortality = 0 if mortality == .
+
+tab mortality
+
+gen survival = 1 if DISCHDEST != "Expired"
+
+replace survival = 0 if survival == .
+
+tab survival
+
+rename *, upper
+
+save "\2019", replace 

@@ -1,0 +1,190 @@
+
+STEP-3 Staking/appending the cleaned up the yearly files, and preparing the modeling file 
+
+*Project Emergency Surgeries NISQIP
+
+*File name and path 
+use "Z:\acs_nsqip_puf19.dta"
+
+use "\2019_V3"
+append using "\2018_V3"
+append using "\2017_V3"
+append using "\2016_V3"
+append using "\2015_V3"
+append using "\2014_V3"
+replace PUFYEAR = "2014" if PUFYEAR == ""
+append using "\2013_V3"
+replace PUFYEAR = "2013" if PUFYEAR == ""
+append using "\2012_V3"
+replace PUFYEAR = "2012" if PUFYEAR == ""
+
+tab MORTALITY
+
+replace PODIAG = PODIAG10 if  PODIAG  == ""
+replace PODIAGTX = PODIAGTX10 if  PODIAGTX  == ""
+
+tab ELECTSURG 
+replace ELECTSURG = "No" if ELECTSURG == "Unknown"
+replace ELECTSURG = "No" if ELECTSURG == "NULL"
+
+tab ANESTHES 
+replace ANESTHES = "Other" if ANESTHES == "Unknown"
+replace ANESTHES = "Other" if ANESTHES == "NULL"
+
+tab OPTIME,sort 
+
+tab TOTHLOS , sort 
+replace TOTHLOS = 1 if TOTHLOS == -99
+ 
+drop PODIAG10 PODIAGTX10 HTOODAY TRANST
+
+drop DPRNA DPRBUN DPRCREAT DPRALBUM DPRBILI DPRSGOT DPRALKPH DPRWBC DPRHCT DPRPLATE DPRPTT DPRPT DPRINR
+
+label variable LAB_WBC "Pre-operative WBC"
+label variable LAB_HCT "Pre-operative hematocrit"
+label variable LAB_PLATE "Pre-operative platelet count"
+label variable LAB_PTT "Pre-operative PTT"
+label variable LAB_INR "Pre-operative International Normalized Ratio (INR) of PT values"
+label variable LAB_ILI "Pre-operative total bilirubin"
+label variable LAB_SGOT "Pre-operative SGOT"
+label variable LAB_ALKPH "Pre-operative alkaline phosphatase"
+label variable LAB_SODM "Pre-operative serum sodium"
+label variable LAB_BUN "Pre-operative BUN"
+label variable LAB_CREAT "Pre-operative serum creatinine"
+label variable LAB_ALBUM "Pre-operative serum albumin"
+
+drop PRWBC PRHCT PRPLATE PRPTT PRINR PRPT PRBILI PRSGOT PRALKPH PRSODM PRBUN PRCREAT PRALBUM
+
+tab UNPLANNEDREADMISSION1 
+replace UNPLANNEDREADMISSION1 = "No" if UNPLANNEDREADMISSION1 == "NULL"
+
+tab RACE_NEW 
+replace RACE_NEW = "1_White" if RACE_NEW == "White"
+
+tab ETHNICITY_HISPANIC
+
+tab ASACLAS 
+replace ASACLAS = "3-Severe Disturb" if ASACLAS == "Severe Disturb" 
+
+tab EMERGNCY 
+
+tab WNDCLAS
+
+tab READMISSION1 
+replace READMISSION1= "No" if READMISSION1 == "NULL"
+
+tab DOPERTOD
+replace DOPERTOD= 1 if DOPERTOD == 01
+
+tab REOPERATION1
+
+tab DISCHDEST
+
+tab Transfer
+
+drop NOTHCDIFF WOUND_CLOSURE
+
+drop ADMSYR ATTEND PACKS ETOH DNR FNSTATUS1 CPNEUMON ESOVAR HXMI PRVPCI PRVPCS HXANGINA HXPVD RESTPAIN IMPSENS COMA HEMI HXTIA CVA CVANO TUMORCNS PARA QUAD CHEMO RADIO PREGNANCY PROPER30 OPNOTE PGY AIRTRA MALLAMP RBC ANESURG SURGANE DPATRM ANETIME TYPEINTOC SDISDT STOODAY TOTSLOS NCNSCOMA CNSCOMA DCNSCOMA NNEURODEF NEURODEF DNEURODEF NOTHGRAFL OTHGRAFL DOTHGRAFL DSDTOHD READMISSION UNPLANREADMISSION REOPERATION RENAINSF DRENAINSF READMRELICD92 READMRELICD93 READMRELICD94 READMRELICD95
+
+mdesc 
+
+tab LAB_ALBUM
+
+tab MORTALITY LAB_ALBUM
+drop if LAB_ALBUM ==2 
+
+tab NFAILWEAN 
+tab FAILWEAN
+
+drop NFAILWEAN 
+
+tab FAILWEAN
+
+replace DIABETES = "1_NO" if  DIABETES == "NO"
+replace DIABETES = "2_NON-INSULIN" if  DIABETES == "NON-INSULIN"
+replace DIABETES = "3_INSULIN" if  DIABETES == "INSULIN"
+
+tab DIABETES
+
+replace DYSPNEA = "1_No" if  DYSPNEA == "No"
+replace DYSPNEA = "2_MODERATE EXERTION" if  DYSPNEA == "MODERATE EXERTION"
+replace DYSPNEA = "3_AT REST" if  DYSPNEA == "AT REST"
+
+tab DYSPNEA 
+
+replace PULEMBOL = "0" if PULEMBOL == "No Complication"
+replace PULEMBOL = "1" if PULEMBOL == "Pulmonary Embolism" 
+
+tab PULEMBOL
+
+replace FAILWEAN = "0" if FAILWEAN == "No Complication"
+replace FAILWEAN = "1" if FAILWEAN == "On Ventilator greater than 48 Hours" 
+
+tab FAILWEAN
+
+fre NURNINFEC NCNSCVA NOTHBLEED NOTHDVT 
+
+tab HTOODAY2 
+
+tab HEIGHT, sort  
+
+tab WEIGHT, sort  
+summarize WEIGHT 
+
+bmi BMI, ht (HEIGHT) wt(WEIGHT)
+
+gen bmi_cat = "2_underweight" if BMI <= 18.5
+replace bmi_cat = "1_normal" if BMI > 18.5 & BMI <= 24.9
+replace bmi_cat = "3_overweight" if BMI > 24.9 & BMI <= 29.9
+replace bmi_cat = "4_obese" if BMI > 29.9
+
+tab bmi_cat 
+
+drop FNSTATUS DIABETES2 HXCOPD2 HXCHF2 HYPERMED2 mFI 
+
+mdesc 
+
+tab SURVIVAL if OPTIME == 0
+
+drop if OPTIME == 0
+
+*************************************************************
+replace PRSEPIS= "1_None" if PRSEPIS== "None"
+replace PRSEPIS= "2_SIRS" if PRSEPIS== "SIRS"
+replace PRSEPIS= "3_Sepsis" if PRSEPIS== "Sepsis"
+replace PRSEPIS = "4-Septic Shock" if PRSEPIS== "Septic Shock"
+
+tab PRSEPIS
+
+
+tab RACE_NEW
+
+replace RACE_NEW = "Others" if RACE_NEW == "American Indian or Alaska Native"
+replace RACE_NEW = "Others" if RACE_NEW == "Native Hawaiian or Pacific Islander"
+
+
+rename Age_Cat Age_Cat2  
+
+
+tab AGE
+
+gen Age_Cat = "20-30" if AGE <= "30" 
+replace Age_Cat = "31-40" if AGE >= "31" & AGE <= "40" 
+replace Age_Cat = "41-50" if AGE >= "41" & AGE <= "50" 
+replace Age_Cat = "51-60" if AGE >= "51" & AGE <= "60" 
+replace Age_Cat = "61-70" if AGE >= "61" & AGE <= "70" 
+replace Age_Cat = "71-80" if AGE >= "71" & AGE <= "80" 
+replace Age_Cat = "81-90" if AGE >= "81" & AGE <= "90" 
+replace Age_Cat = "90+" if AGE == "90+" 
+
+tab Age_Cat
+
+
+rename VENTILAT VENTILATOR
+
+rename PRSEPIS SYS_SEPSIS
+
+order SURVIVAL MORTALITY Age_Cat Transfer SEX RACE_NEW ETHNICITY_HISPANIC ASACLAS EMERGNCY WNDCLAS FNSTATUS2 mFI bmi_cat VENTILATOR DIABETES SMOKE DYSPNEA HXCOPD ASCITES HXCHF HYPERMED RENAFAIL DIALYSIS DISCANCR WNDINF STEROID WTLOSS BLEEDDIS TRANSFUS SYS_SEPSIS LAB_WBC LAB_HCT LAB_PLATE LAB_PTT LAB_INR LAB_ILI LAB_SGOT LAB_ALKPH LAB_SODM LAB_BUN LAB_CREAT LAB_ALBUM  CASEID , first 
+
+
+save "\2012_2019_Master"

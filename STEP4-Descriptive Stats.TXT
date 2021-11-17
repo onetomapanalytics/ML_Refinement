@@ -1,0 +1,153 @@
+
+STEP-4 Running some descriptive stats on the data 
+
+*Project Emergency Surgeries NISQIP
+
+
+Below code was used to check for unique counts of CPT codes for each year 
+*File name and path 
+use "Z:\PreOp_Modelling.dta"
+
+tab PUFYEAR 
+
+tab PUFYEAR SURVIVAL
+
+ta
+
+codebook PRNCPTX if PUFYEAR == "2012"
+
+codebook PRNCPTX if PUFYEAR == "2013"
+
+codebook PRNCPTX if PUFYEAR == "2014"
+
+codebook PRNCPTX if PUFYEAR == "2015"
+ 
+codebook PRNCPTX if PUFYEAR == "2016"
+
+codebook PRNCPTX if PUFYEAR == "2017"
+
+codebook PRNCPTX if PUFYEAR == "2018"
+
+codebook PRNCPTX if PUFYEAR == "2019"
+
+codebook PRNCPTX 
+
+************************************************
+
+
+*unique values:  191                   missing "":  0/1661
+*unique values:  213                   missing "":  0/1841
+*unique values:  201   		   	missing "":  0/1684
+*unique values:  195			missing "":  0/1619
+*unique values:  167 			missing "":  0/1470
+
+
+*below lines of code were used to generate frequency of each CPT code and then sort in descending order 
+
+egen x = count(1), by(PRNCPTX) 
+
+sort PRNCPTX
+
+by PRNCPTX: gen idx_pr = _n == 1
+
+*******************************************************************************
+* ADDING THE TOTAL DEATHS FOR ALL PROCEDURES
+bysort PRNCPTX: egen Total_Death= sum(DISCHDEST == "Expired" ) 
+
+order PRNCPTX CPT x Total_Death idx_pr, first 
+
+gsort -x
+
+
+codebook PRNCPTX if idx_pr ==1
+
+
+
+***************************************************************
+*Chi square tests for the data 
+***************************************************************
+
+tab Age_Cat SURVIVAL, row col chi2 
+
+tab SEX SURVIVAL , row col chi2 
+
+tab RACE_NEW SURVIVAL , row col chi2 
+
+tab ETHNICITY_HISPANIC SURVIVAL , row col chi2 
+
+tab Transfer SURVIVAL  , row col chi2 
+
+tab ASACLAS SURVIVAL  , row col chi2 
+
+tab EMERGNCY SURVIVAL , row col chi2 
+
+tab WNDCLAS SURVIVAL , row col chi2 
+
+tab ANESTHES SURVIVAL , row col chi2 
+
+tab SURGSPEC SURVIVAL, row col chi2 
+
+tab FNSTATUS2 SURVIVAL , row col chi2 
+
+tab bmi_cat SURVIVAL , row col chi2 
+
+tab VENTILAT SURVIVAL , row col chi2 
+
+tab DIABETES SURVIVAL , row col chi2 
+
+tab SMOKE SURVIVAL , row col chi2 
+
+tab DYSPNEA SURVIVAL , row col chi2 
+
+tab HXCOPD SURVIVAL , row col chi2 
+
+tab ASCITES SURVIVAL , row col chi2 
+
+tab HXCHF SURVIVAL , row col chi2 
+
+tab HYPERMED SURVIVAL , row col chi2 
+
+tab RENAFAIL SURVIVAL , row col chi2 
+
+tab DIALYSIS SURVIVAL , row col chi2 
+
+tab DISCANCR SURVIVAL , row col chi2 
+
+tab WNDINF SURVIVAL , row col chi2 
+
+tab STEROID SURVIVAL , row col chi2 
+
+tab WTLOSS SURVIVAL , row col chi2 
+
+tab BLEEDDIS SURVIVAL , row col chi2 
+
+tab TRANSFUS SURVIVAL , row col chi2 
+
+tab PRSEPIS SURVIVAL, row col chi2 
+****************************
+
+tab LAB_WBC SURVIVAL , row col chi2 
+
+tab LAB_HCT SURVIVAL , row col chi2 
+
+tab LAB_PLATE SURVIVAL , row col chi2 
+
+tab LAB_PTT SURVIVAL , row col chi2 
+
+tab LAB_INR SURVIVAL, row col chi2 
+
+tab LAB_ILI SURVIVAL , row col chi2 
+
+tab LAB_SGOT SURVIVAL, row col chi2 
+
+tab LAB_ALKPH SURVIVAL, row col chi2 
+
+tab LAB_SODM SURVIVAL, row col chi2 
+
+tab LAB_BUN SURVIVAL, row col chi2 
+
+tab LAB_CREAT SURVIVAL, row col chi2 
+
+tab LAB_ALBUM SURVIVAL, row col chi2 
+
+*tab DISCHDEST SURVIVAL
